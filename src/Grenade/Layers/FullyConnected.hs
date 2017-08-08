@@ -12,6 +12,7 @@ module Grenade.Layers.FullyConnected (
 
 import           Control.Monad.Random hiding (fromList)
 
+import           Control.DeepSeq (NFData(..))
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons.TypeLits
@@ -34,6 +35,21 @@ data FullyConnected' i o = FullyConnected'
 
 instance Show (FullyConnected i o) where
   show FullyConnected {} = "FullyConnected"
+
+instance NFData (FullyConnected i o) where
+  rnf (FullyConnected x y) = rnf x `seq` rnf y
+
+instance NFData (FullyConnected' i o) where
+  rnf (FullyConnected' x y) = rnf x `seq` rnf y
+
+instance (KnownNat i, KnownNat o) => Num (FullyConnected' i o) where
+  (+) (FullyConnected' x0 y0) (FullyConnected' x1 y1)  = FullyConnected' (x0 + x1) (y0 + y1)
+  (-) (FullyConnected' x0 y0) (FullyConnected' x1 y1)  = FullyConnected' (x0 - x1) (y0 - y1)
+  (*) (FullyConnected' x0 y0) (FullyConnected' x1 y1)  = FullyConnected' (x0 * x1) (y0 * y1)
+  abs (FullyConnected' x y)  = FullyConnected' (abs x) (abs y)
+  signum (FullyConnected' x y)  = FullyConnected' (signum x) (signum y)
+  fromInteger x = FullyConnected' (fromInteger x) (fromInteger x)
+
 
 instance (KnownNat i, KnownNat o) => UpdateLayer (FullyConnected i o) where
   type Gradient (FullyConnected i o) = (FullyConnected' i o)

@@ -19,6 +19,7 @@ module Grenade.Recurrent.Layers.LSTM (
 import           Control.Monad.Random ( MonadRandom, getRandom )
 
 -- import           Data.List ( foldl1' )
+import           Control.DeepSeq (NFData(..))
 import           Data.Proxy
 import           Data.Serialize
 import           Data.Singletons.TypeLits
@@ -43,6 +44,9 @@ data LSTM :: Nat -> Nat -> * where
             -> !(LSTMWeights input output) -- Momentums
             -> LSTM input output
 
+instance NFData (LSTM ws ms) where
+  rnf (LSTM ws ms) = rnf ws `seq` rnf ms
+
 data LSTMWeights :: Nat -> Nat -> * where
   LSTMWeights :: ( KnownNat input
                  , KnownNat output
@@ -60,8 +64,96 @@ data LSTMWeights :: Nat -> Nat -> * where
                  , lstmBc :: !(R output)        -- Bias Cell         (b_c)
                  } -> LSTMWeights input output
 
+instance NFData (LSTMWeights i o) where
+  rnf (LSTMWeights {..}) =
+    rnf lstmWf `seq`
+    rnf lstmUf `seq`
+    rnf lstmBf `seq`
+    rnf lstmWi `seq`
+    rnf lstmUi `seq`
+    rnf lstmBi `seq`
+    rnf lstmWo `seq`
+    rnf lstmUo `seq`
+    rnf lstmBo `seq`
+    rnf lstmWc `seq`
+    rnf lstmBc
+
 instance Show (LSTM i o) where
   show LSTM {} = "LSTM"
+
+instance (KnownNat i, KnownNat o) => Num (LSTMWeights i o) where
+  (+) x y  = LSTMWeights
+    (lstmWf x + lstmWf y)
+    (lstmUf x + lstmUf y)
+    (lstmBf x + lstmBf y)
+    (lstmWi x + lstmWi y)
+    (lstmUi x + lstmUi y)
+    (lstmBi x + lstmBi y)
+    (lstmWo x + lstmWo y)
+    (lstmUo x + lstmUo y)
+    (lstmBo x + lstmBo y)
+    (lstmWc x + lstmWc y)
+    (lstmBc x + lstmBc y)
+  (-) x y  =  LSTMWeights
+    (lstmWf x - lstmWf y)
+    (lstmUf x - lstmUf y)
+    (lstmBf x - lstmBf y)
+    (lstmWi x - lstmWi y)
+    (lstmUi x - lstmUi y)
+    (lstmBi x - lstmBi y)
+    (lstmWo x - lstmWo y)
+    (lstmUo x - lstmUo y)
+    (lstmBo x - lstmBo y)
+    (lstmWc x - lstmWc y)
+    (lstmBc x - lstmBc y)
+  (*) x y  =  LSTMWeights
+    (lstmWf x * lstmWf y)
+    (lstmUf x * lstmUf y)
+    (lstmBf x * lstmBf y)
+    (lstmWi x * lstmWi y)
+    (lstmUi x * lstmUi y)
+    (lstmBi x * lstmBi y)
+    (lstmWo x * lstmWo y)
+    (lstmUo x * lstmUo y)
+    (lstmBo x * lstmBo y)
+    (lstmWc x * lstmWc y)
+    (lstmBc x * lstmBc y)
+  abs (LSTMWeights {..}) = LSTMWeights
+    (abs lstmWf)
+    (abs lstmUf)
+    (abs lstmBf)
+    (abs lstmWi)
+    (abs lstmUi)
+    (abs lstmBi)
+    (abs lstmWo)
+    (abs lstmUo)
+    (abs lstmBo)
+    (abs lstmWc)
+    (abs lstmBc)
+  signum (LSTMWeights {..}) = LSTMWeights
+    (signum lstmWf)
+    (signum lstmUf)
+    (signum lstmBf)
+    (signum lstmWi)
+    (signum lstmUi)
+    (signum lstmBi)
+    (signum lstmWo)
+    (signum lstmUo)
+    (signum lstmBo)
+    (signum lstmWc)
+    (signum lstmBc)
+  fromInteger x = LSTMWeights
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
+    (fromInteger x)
 
 instance (KnownNat i, KnownNat o) => UpdateLayer (LSTM i o) where
   -- The gradients are the same shape as the weights and momentum

@@ -5,6 +5,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveAnyClass        #-}
 {-|
 Module      : Grenade.Layers.Crop
 Description : Cropping layer
@@ -16,9 +18,12 @@ module Grenade.Layers.Crop (
     Crop (..)
   ) where
 
+import           Control.DeepSeq (NFData(..))
 import           Data.Maybe
 import           Data.Proxy
+import           Data.Serialize
 import           Data.Singletons.TypeLits
+import           GHC.Generics (Generic)
 import           GHC.TypeLits
 
 import           Grenade.Core
@@ -33,9 +38,22 @@ data Crop :: Nat
           -> Nat
           -> Nat -> * where
   Crop :: Crop cropLeft cropTop cropRight cropBottom
+  deriving (Generic, NFData)
 
 instance Show (Crop cropLeft cropTop cropRight cropBottom) where
   show Crop = "Crop"
+
+instance Serialize (Crop l t r b) where
+    put _ = return ()
+    get = return Crop
+
+instance Num () where
+  (+) _ _  = ()
+  (-) _ _  = ()
+  (*) _ _  = ()
+  abs _    = ()
+  signum _ = ()
+  fromInteger _ = ()
 
 instance UpdateLayer (Crop l t r b) where
   type Gradient (Crop l t r b) = ()

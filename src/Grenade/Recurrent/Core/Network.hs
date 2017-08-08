@@ -27,6 +27,7 @@ module Grenade.Recurrent.Core.Network (
   ) where
 
 
+import           Control.DeepSeq (NFData(..))
 import           Control.Monad.Random ( MonadRandom )
 import           Data.Singletons ( SingI )
 import           Data.Singletons.Prelude ( Head, Last )
@@ -193,6 +194,12 @@ applyRecurrentUpdate rate (layer :~@> rest) (gradient ://> grest)
 applyRecurrentUpdate _ RNil RGNil
   = RNil
 
+instance NFData (RecurrentNetwork '[] '[i]) where
+  rnf RNil = ()
+instance (NFData x, NFData (RecurrentNetwork xs rs)) => NFData (RecurrentNetwork (FeedForward x ': xs) (i ': rs)) where
+  rnf (x :~~> xs) = rnf x `seq` rnf xs
+instance (NFData x, NFData (RecurrentNetwork xs rs)) => NFData (RecurrentNetwork (Recurrent x ': xs) (i ': rs)) where
+  rnf (x :~@> xs) = rnf x `seq` rnf xs
 
 instance Show (RecurrentNetwork '[] '[i]) where
   show RNil = "NNil"
@@ -201,6 +208,26 @@ instance (Show x, Show (RecurrentNetwork xs rs)) => Show (RecurrentNetwork (Feed
 instance (Show x, Show (RecurrentNetwork xs rs)) => Show (RecurrentNetwork (Recurrent x ': xs) (i ': rs)) where
   show (x :~@> xs) = show x ++ "\n~~>\n" ++ show xs
 
+instance NFData (RecurrentGradient '[]) where
+  rnf RGNil = ()
+instance (NFData (Gradient x), NFData (RecurrentGradient xs)) => NFData (RecurrentGradient (phantom x ': xs)) where
+  rnf (x ://> xs) = rnf x `seq` rnf xs
+
+instance Num (RecurrentGradient '[]) where
+  (+) _ _  = RGNil
+  (-) _ _  = RGNil
+  (*) _ _  = RGNil
+  abs _    = RGNil
+  signum _ = RGNil
+  fromInteger _ = RGNil
+
+instance (UpdateLayer x, Num (Gradient x), Num (RecurrentGradient xs)) => Num (RecurrentGradient (phantom x ': xs)) where
+  (+) (gx ://> gxs) (gy ://> gys)  = (gx + gy) ://> (gxs + gys)
+  (-) (gx ://> gxs) (gy ://> gys)  = (gx - gy) ://> (gxs - gys)
+  (*) (gx ://> gxs) (gy ://> gys)  = (gx * gy) ://> (gxs * gys)
+  abs (g ://> gs)    = abs g ://> abs gs
+  signum (g ://> gs)   = signum g ://> signum gs
+  fromInteger x        = fromInteger x ://> fromInteger x
 
 -- | A network can easily be created by hand with (:~~>) and (:~@>), but an easy way to initialise a random
 --   recurrent network and a set of random inputs for it is with the randomRecurrent.
@@ -248,6 +275,15 @@ instance (UpdateLayer x, Serialize (RecurrentInputs ys), Fractional (RecurrentIn
 instance (Serialize (RecurrentShape x), Fractional (RecurrentShape x), RecurrentUpdateLayer x, Serialize (RecurrentInputs ys), Fractional (RecurrentInputs ys)) => (Serialize (RecurrentInputs (Recurrent x ': ys))) where
   put ( i :~@+> rest ) = put i >> put rest
   get = (:~@+>) <$> get <*> get
+
+instance (NFData (RecurrentInputs '[])) where
+  rnf _ = ()
+
+instance (NFData (RecurrentInputs ys)) => (NFData (RecurrentInputs (FeedForward x ': ys))) where
+  rnf ( () :~~+> rest) = rnf rest
+
+instance (NFData (RecurrentShape x), NFData (RecurrentInputs ys)) => (NFData (RecurrentInputs (Recurrent x ': ys))) where
+  rnf ( i :~@+> rest ) = rnf i `seq` rnf rest
 
 
 -- Num instance for `RecurrentInputs layers`

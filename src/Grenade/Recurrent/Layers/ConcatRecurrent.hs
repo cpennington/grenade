@@ -21,6 +21,7 @@ module Grenade.Recurrent.Layers.ConcatRecurrent (
     ConcatRecurrent (..)
   ) where
 
+import           Control.DeepSeq (NFData(..))
 import           Data.Serialize
 
 import           Data.Singletons
@@ -49,10 +50,23 @@ data ConcatRecurrent :: Shape -> * -> Shape -> * -> * where
   ConcatRecRight :: x -> y -> ConcatRecurrent m (FeedForward x) n (Recurrent y)
   ConcatRecBoth  :: x -> y -> ConcatRecurrent m (Recurrent x) n   (Recurrent y)
 
+instance (NFData x, NFData y) => NFData (ConcatRecurrent m (p x) n (q y)) where
+  rnf (ConcatRecLeft x y)  = rnf x `seq` rnf y
+  rnf (ConcatRecRight x y) = rnf x `seq` rnf y
+  rnf (ConcatRecBoth x y)  = rnf x `seq` rnf y
+
 instance (Show x, Show y) => Show (ConcatRecurrent m (p x) n (q y)) where
   show (ConcatRecLeft x y)  = "ConcatRecLeft\n" ++ show x ++ "\n" ++ show y
   show (ConcatRecRight x y) = "ConcatRecRight\n" ++ show x ++ "\n" ++ show y
   show (ConcatRecBoth x y)  = "ConcatRecBoth\n" ++ show x ++ "\n" ++ show y
+
+instance (Num x, Num y) => Num (x, y) where
+  (+) (x0, x1) (y0, y1) = (x0 + y0, x1 + y1)
+  (-) (x0, x1) (y0, y1) = (x0 - y0, x1 - y1)
+  (*) (x0, x1) (y0, y1) = (x0 * y0, x1 * y1)
+  abs (x, y)      = (abs x, abs y)
+  signum (x, y)   = (signum x, signum y)
+  fromInteger x   = (fromInteger x, fromInteger x)
 
 instance (RecurrentUpdateLayer x, UpdateLayer y) => UpdateLayer (ConcatRecurrent m (Recurrent x) n (FeedForward y)) where
   type Gradient (ConcatRecurrent m (Recurrent x) n (FeedForward y)) = (Gradient x, Gradient y)
