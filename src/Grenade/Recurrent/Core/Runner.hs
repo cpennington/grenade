@@ -13,6 +13,7 @@ module Grenade.Recurrent.Core.Runner (
   , runRecurrentBackprop
   , backPropagateRecurrent
   , trainRecurrent
+  , updateRecInputs
 
   , RecurrentGradients
   ) where
